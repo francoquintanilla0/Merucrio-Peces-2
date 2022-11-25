@@ -1,0 +1,291 @@
+---
+title: "Módulo 5 Procesamiento de Datos Multivariados"
+author: "Franco Quintanilla"
+date: "2022-10-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+Instalamos las librerías que vamos a utilizar
+
+```{r}
+library(MVN)
+library(ggplot2)
+library(ggcorrplot)
+library(stats)
+library(factoextra)
+library(FactoMineR)
+```
+
+Importamos los datos
+
+```{r}
+df = read.csv("/Users/francoquintanilla/Documents/R/mercurio.csv", row.names=1)
+head(df)
+```
+
+# Limpieza de datos
+
+Primero, vamos a crear una función, la cual nos va a limpiar nuestro dataset en base a los cuantiles.
+
+```{r}
+f_outliers = function(x, removeNA = TRUE)
+  {
+  qrts = quantile(x, probs=c(0.25, 0.75), na.rm=removeNA)
+  caps = quantile(x, probs=c(0.05, 0.95), na.rm=removeNA)
+  iqr = qrts[2] - qrts[1]
+  x[x<qrts[1] - 1.5*iqr] = caps[1]
+  x[x>qrts[2] + 1.5*iqr] = caps[2]
+  x
+  }
+```
+
+Ahora, vamos a pasar los datos por está función para eliminar los outliers para que no nos hagan ruido estos valores.
+
+```{r}
+x3 = f_outliers(df$X3)
+x4 = f_outliers(df$X4)
+x5 = f_outliers(df$X5)
+x6 = f_outliers(df$X6)
+x7 = f_outliers(df$X7)
+x8 = f_outliers(df$X8)
+x9 = f_outliers(df$X9)
+x10 = f_outliers(df$X10)
+x11 = f_outliers(df$X11)
+```
+
+Vamos a corroborar la limpieza de los datos y visualizarlos con boxplots.
+
+```{r}
+par(mfrow=c(3,3))
+boxplot(x3, col="#FFA07A", main="Boxplot de la Alcalinidad",
+        horizontal=TRUE)
+boxplot(x4, col="#BFEFFF", main="Boxplot del PH",
+        horizontal=TRUE)
+boxplot(x5, col="#7FFFD4", main="Boxplot del Calcio",
+        horizontal=TRUE)
+boxplot(x6, col="#FFF68F", main="Boxplot de la Clorofila",
+        horizontal=TRUE)
+boxplot(x7, col="#FFE4C4", main="Boxplot de la concentración media de mercurio",
+        horizontal=TRUE)
+boxplot(x8, col="#FF7F50", main="Boxplot del número de peces estudiados en el lago",
+        horizontal=TRUE)
+boxplot(x9, col="#DEB887", main="Boxplot del mínimo de la concentración de mercurio",
+        horizontal=TRUE)
+boxplot(x10, col="#C1FFC1", main="Boxplot del máximo de la concentración de mercurio",
+        horizontal=TRUE)
+boxplot(x11, col="#FF6A6A", main="Boxplot de la estimación de la concentración de mercurio",
+        horizontal=TRUE)
+```
+
+# Análisis de Normalidad
+
+Ahora, para el análisis de normalidad, primero vamos a visualizar su comportamiento con histogramas.
+
+```{r}
+par(mfrow=c(3,3))
+hist(x3, col="#FFA07A", main="Distribución de la Alcalinidad",
+     breaks=10, freq=FALSE)
+hist(x4, col="#BFEFFF", main="Distribución del PH",
+     breaks=10, freq=FALSE)
+hist(x5, col="#7FFFD4", main="Distribución del Calcio",
+     breaks=10, freq=FALSE)
+hist(x6, col="#FFF68F", main="Distribución de la Clorofila",
+     breaks=10, freq=FALSE)
+hist(x7, col="#FFE4C4", main="Distribución de la concentración media de mercurio",
+     breaks=10, freq=FALSE)
+hist(x8, col="#FF7F50", main="Distribución del número de peces estudiados en el lago",
+     breaks=10, freq=FALSE)
+hist(x9, col="#DEB887", main="Distribución del mínimo de la concentración de mercurio",
+     breaks=10, freq=FALSE)
+hist(x10, col="#C1FFC1", main="Distribución del máximo de la concentración de mercurio",
+     breaks=10, freq=FALSE)
+hist(x11, col="#FF6A6A", main="Distribución de la estimación de la concentración de mercurio",
+     breaks=10, freq=FALSE)
+```
+
+Como podemos ver, ninguno de los valores parece tener un comportamiento normal, hay algunos que pueden tener una tendencia como el PH, o el máximo de la concentración de mercurio, pero para eso, tenemos que hacer unas pruebas de normalidad.
+
+Antes que hacer otra cosa, volvemos a crear un dataframe con los valores limpios y los valores que nos interese hacer el análisis.
+
+```{r}
+df2 = data.frame("Alcalinidad"=x3, "PH"=x4, "Calcio"=x5, "Clorofila"=x6,
+                 "Min_Conc"=x9, "Max_Conc"=x10, "Est_Conc"=x11)
+df2
+```
+
+Una vez que tenemos el nuevo data frame, ahora si podemos hacer las pruebas de normalidad
+
+## Prueba de Normalidad de Mardia
+
+```{r}
+n_test = mvn(df2, mvnTest="mardia")
+n_test$multivariateNormality
+```
+
+Como podemos observar en este caso, no pasan la prueba de normalidad de Mardia, esto en base a los resultados de la curtosis y el sesgo que presentan.
+
+## Prueba de Normalidad de Anderson Darling
+
+```{r}
+n_test$univariateNormality
+```
+
+En el caso de la prueba de ***Anderson-Darling***, nos dice que nuestras conjeturas fueron correctas, que tanto el *PH* como el *Máximo de la concentración de mercurio* tienen un comportamiento normal, por lo que pasaron el test, las demás variables no tienen ese comportamiento.
+
+También podemos observar los resultados de las demás medidas descriptivas.
+
+```{r}
+n_test$Descriptives
+```
+
+En donde podemos ver con más detalle todas las características de nuestras variables, como lo son los cuantiles, la media, la desviación estándar, la curtosis, el sesgo, etc. 
+
+Con estos datos, vamos a crear otro data frame con ahora los datos que nos interesan, que son los datos que pasaron la prueba de normalidad.
+
+```{r}
+df3 = data.frame("PH"=x4, "Max_Conc"=x10)
+df3
+```
+
+Si volvemos a correr el test de normalidad en nuestro nuevo data frame, vamos a ver que vuelve a pasar ese test y que ahora tenemos puros datos con una distribución normal.
+
+```{r}
+norm_test = mvn(df3, mvnTest="mardia")
+norm_test$multivariateNormality
+```
+
+```{r}
+norm_test$univariateNormality
+```
+
+```{r}
+norm_test$Descriptives
+```
+
+Ahora, podemos graficar los respectivos plots para ver su comportamiento bivariado.
+
+```{r}
+perspec = mvn(df3, mvnTest="mardia", multivariatePlot="persp")
+```
+
+```{r}
+countour = mvn(df3, mvnTest="mardia", multivariatePlot="contour")
+```
+
+Como podemos observar en el plot del contorno, se apreciaria que los datos están centrados en que entre mayor PH tenga el agua, la concentración máxima de mercurio va a ir disminuyendo, aunque su comportamiento no es del todo homogéneo, como podemos observar.
+
+Después de esto, vamos a buscar los datos influyentes, por lo que vamos a utilizar un grafico QQplot multivariado, que en este caso sería bivariado y lo hacemos de la siguiente manera.
+
+```{r}
+# Indicar que se trata de 2 variables
+p = 2
+
+# Vector de medias
+X = colMeans(df3)
+
+# Matriz de covarianza
+S = cov(df3)
+
+# Distancia de Mahalanobis
+d2M =  mahalanobis(df3, X, S)
+
+# Multinormalidad Test gráfico Q-Q Plot
+plot(qchisq(((1:nrow(df3)) - 1/2)/nrow(df3), df=p), sort(d2M), 
+     xlab="Theoretical Quantiles", ylab="Sample Quantiles", 
+     main="QQ-Plot Bivariado (PH y Concentración Máxima de Mercurio)")
+abline(a=0, b=1, col="blue")
+```
+
+Lo que nos dice el gráfico QQ plot bivariado, es que tiene un comportamiento con asimetría negativa es decir, que los datos están sesgados a la izquierda, por eso se comporta de la manera que sigue la tendencia normal, pero al final caen los datos. 
+
+Podemos también hacer uso de la misma librería para observar los datos atípicos, y podemos ver que solo 4 de esos datos son atípicos y que los demás se encuentran dentro de la distancia de Mahalanobis haciendo uso del **Chi-Square QQ-Plot**.
+
+```{r}
+chi_sqr = mvn(df3, mvnTest="mardia", multivariateOutlierMethod="adj")
+```
+
+# Análisis de Componentes Principales (**PCA**)
+
+Para el análisis de los componentes principales, vamos a usar el data frame completo, que era **df**, pero le vamos a quitar el nombre de los lagos, ya que es una variable categórica que no influye en nada.
+
+```{r}
+df = data.frame("Alcalinidad"=x3, "PH"=x4, "Calcio"=x5, "Clorofila"=x6,
+                "Conc_Med_Merc"=x7, "Num_peces_estud"=x8, "Min_Conc"=x9,
+                "Max_Conc"=x10, "Est_Conc"=x11)
+df
+```
+
+Hecho esto, ahora sí podemos hacer un análisis de componentes principales. Lo primero que tenemos que hacer es sacar la matriz de correlación de nuestras variables.
+
+```{r}
+cor_M = cor(df)
+cor_M
+```
+
+Que la verdad se ve mucho más interpretable si la graficamos.
+
+```{r}
+ggcorrplot(cor_M, lab=TRUE, type="upper")
+```
+
+Ya desde aquí podemos hacer algunas inferencias en los datos y cuales son los componentes que más aportan y cuales no aportan, pero además de la pura matriz de correlación, vamos a hacer todo el análisis de componentes principales.
+
+```{r}
+datos = cor_M
+cp = PCA(datos)
+fviz_pca_ind(cp, col.ind="blue", addEllipses=TRUE, repel=TRUE)
+```
+
+Como podemos ver en los diferentes plots pasados, lo que nos está representando es el comportamiento de las variables en base a la dimensión en la que se encuentran y su aportación a la misma. Como podemos ver, en la dimensión 1, que es nuestr PCA 1, nos representa que ahí se encuentran la mayoría de los datos, y que las que aportan positivamente son las mismas variables de mercurio, y las que representan de manera negativa, son las demás, como la clorofila, el PH, el calcio y la alcalinidad. Esto nos quiere decir y comprobar lo que hemos estado analizando en todo este estudio, que los componentes del ***PH, Calcio, Alcalinidad, y Clorofila*** nos ayudan a disminuir la cantidad de Mercurio en los peces y en el agua de los lagos. 
+
+```{r}
+fviz_screeplot(cp)
+```
+
+En el caso del plot de codo, podemos ver como nuestro problema pasa de tener 8 dimensiones, a tener solo 1 dimensión, la cual tiene una combinación lineal de las distintas variables antes presentadas.
+
+```{r}
+fviz_contrib(cp, choice = c("var"))
+```
+
+Como mencionamos anteriormente, nuestro problema se volvió de una sola dimensión, y podemos observar que la mayoría de las variables aportan muchísimo a ese nuevo componente principal, excepto la variable de número de peces estudiados, la cual podemos ver que es obsoleta y no aporta nada de información en nuestro componente. 
+
+Si queremos, podemos observar numéricamente cuánto aporta cada componente, lo podemos hacer de la siguiente manera.
+
+```{r}
+cp$eig
+```
+
+En donde podemos ver que nuestro primer componente contiene el $86.354\%$ de la información, lo cual es bastante si consideramos la reducción de la dimensionalidad. Podemos también observar que si convertimos nuestro problema a uno de 2 dimensiones, lo cual sería lo mejor, nuestra información explicativa sube a un $98\%$.
+
+```{r}
+cp$var$coord
+```
+
+Con la ayuda de **Coord** podemos ver como nos queda nuestra nueva combinación lineal de las variables, las cuales nos dan la información de nuestros componentes principales. 
+
+```{r}
+cp$var$contrib
+```
+
+Como podemos ver, cada variable nos da entre el $11\%$ y $12\%$ de la información a nuestro componente principal en la primera dimensión. Por otra parte, gracias a estos datos nos podemos dar cuenta que nuestro segundo componente, es decir nuestra dimensión 2, tiene el $93\%$ de la información, por lo que acapara todo este componente. 
+
+
+# Conclusión
+
+* El test de normalidad que más nos ayudó a obtener resultados del comportamiento normal de los datos, fue el de Anderson-Darling ya que este tiende a ser más efectivo a la hora de detectar las desviaciones que se presentan en las colas de la distribución, además de que los test de normalidad se basan en la simetría y la curtosis para corroborar la misma.
+
+* El Análisis de Componentes Principales nos ayudó para poder reducir la dimensión de nuestro problema, ya que al principio contábamos con 8 variables, que eso representa 8 diferentes dimensiones en las que las variables se pueden comportar, entonces, lo que hace el PCA, es hacer una combinación lineal de esas variables para poder reducir el tamaño de dimensiones y facilitar el procesamiento. En nuestro caso, podemos ver que los componentes del ***PH, Calcio, Alcalinidad, y Clorofila*** nos ayudan a disminuir la cantidad de Mercurio en los peces y en el agua de los lagos, mientras que el número de peces estudiados si afecta en el mismo análisis del estudio, pero en tan solo un $11.67\%$ de la información.
+
+
+
+
+
+
+
