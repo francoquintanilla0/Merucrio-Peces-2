@@ -21,7 +21,7 @@ Los daños más peligrosos son los neurotóxicos, ya que sus efectos repercuten 
 
 Las preguntas subyacentes de la pregunta base, son las que más énfasis tienen a la hora de preocuparnos por la salud humana.
 
-1. ¿Las concentraciones de alcalinidad, clorofila, calcio en el agua del lago influyen en la concentración de mercurio de los peces?
-2. ¿Habrá diferencia significativa entre la concentración de mercurio por la edad de los peces?
+1. ¿En qué puede facilitar el estudio la normalidad encontrada en un grupo de variables detectadas?
+2. ¿Cómo te ayudan los componentes principales a abordar este problema?
 
 Con estas preguntas podemos empezar a realizar nuestro análisis estadístico, para poder sacar resultados educados y sustentados con estadística.
